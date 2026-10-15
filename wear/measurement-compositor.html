@@ -1,0 +1,18 @@
+<!doctype html><meta charset="utf-8"><style>html,body{margin:0;background:#000}canvas{display:block;width:100vw;height:auto}</style><canvas id="film" width="1920" height="1080"></canvas>
+<script>
+const canvas=document.getElementById('film'),ctx=canvas.getContext('2d');
+const image=new Image();image.src='/wear/in-use.jpg';
+const patch=document.createElement('canvas');patch.width=250;patch.height=165;const pc=patch.getContext('2d');
+const pressure=[0,28,54,82,109,135,158,151,138,124,108,91,74,56,35,12,0];
+function draw(time){
+ ctx.drawImage(image,0,0,1920,1080);pc.clearRect(0,0,250,165);
+ const g=pc.createLinearGradient(0,0,80,165);g.addColorStop(0,'#303e6c');g.addColorStop(.55,'#1b2634');g.addColorStop(1,'#0d181b');pc.fillStyle=g;pc.fillRect(0,0,250,165);
+ const done=time>=10.2;const i=Math.min(16,Math.floor(time/10.2*17));pc.fillStyle='#a0a9b9';pc.textAlign='center';pc.font='9px Arial';pc.fillText(done?'MEASUREMENT COMPLETE':i<7?'MEASURING · INFLATING':'MEASURING · DEFLATING',125,28);pc.fillStyle='#dae1ec';pc.font='40px Arial';
+ if(done){pc.fillText('124',139,75);pc.fillText('78',139,125);pc.font='24px Arial';pc.fillText('72',55,94);pc.font='8px Arial';pc.fillStyle='#8a98aa';pc.fillText('SYS',190,71);pc.fillText('DIA',190,121);pc.fillText('PULSE',55,110)}
+ else{pc.fillText(String(pressure[i]),137,90);pc.font='9px Arial';pc.fillStyle='#8a98aa';pc.fillText('CUFF PRESSURE · mmHg',137,113);pc.font='19px Arial';pc.fillText('—',52,90)}
+ pc.globalCompositeOperation='destination-in';const mx=pc.createLinearGradient(0,0,250,0);mx.addColorStop(0,'transparent');mx.addColorStop(.1,'#000');mx.addColorStop(.87,'#000');mx.addColorStop(1,'transparent');pc.fillStyle=mx;pc.fillRect(0,0,250,165);const my=pc.createLinearGradient(0,0,0,165);my.addColorStop(0,'transparent');my.addColorStop(.12,'#000');my.addColorStop(.83,'#000');my.addColorStop(1,'transparent');pc.fillStyle=my;pc.fillRect(0,0,250,165);pc.globalCompositeOperation='source-over';
+ ctx.save();ctx.scale(1920/2048,1080/1152);ctx.translate(646,261);ctx.rotate(27*Math.PI/180);ctx.filter='blur(1.1px)';ctx.drawImage(patch,0,0);ctx.restore();
+}
+image.onload=()=>{draw(0);window.ready=true};window.draw=draw;
+window.record=async()=>{const stream=canvas.captureStream(30),mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';const recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:7500000});let chunks=[];recorder.ondataavailable=e=>chunks.push(e.data);const done=new Promise(resolve=>recorder.onstop=resolve);recorder.start();const start=performance.now();await new Promise(resolve=>{const frame=now=>{const t=(now-start)/1000;draw(t);if(t<13)requestAnimationFrame(frame);else resolve()};requestAnimationFrame(frame)});recorder.stop();await done;stream.getTracks().forEach(t=>t.stop());const bytes=new Uint8Array(await new Blob(chunks,{type:mime}).arrayBuffer());let binary='';for(let i=0;i<bytes.length;i+=32768)binary+=String.fromCharCode(...bytes.subarray(i,i+32768));return btoa(binary)};
+</script>
